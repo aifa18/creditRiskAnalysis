@@ -548,30 +548,57 @@ def interpret_ann(val):
     else:
         return "REJECTED", "rejected"
 
-def penjelasan_kelayakan(pendapatan, rasio_hutang, lama_kerja):
-    alasan = []
-    if pendapatan > 70000:
-        alasan.append("pendapatan tergolong tinggi")
-    elif pendapatan < 40000:
-        alasan.append("pendapatan masih rendah")
+def penjelasan_fuzzy(score, status, pendapatan, rasio_hutang, lama_kerja):
+    if status == "APPROVED":
+        return (
+            f"Berdasarkan evaluasi berbasis rule, profil nasabah menunjukkan kondisi yang cukup solid. "
+            f"Pendapatan dan stabilitas kerja mendukung kemampuan pembayaran, serta rasio kewajiban masih dalam batas aman. "
+            f"Skor {score:.1f} mencerminkan kelayakan kredit yang baik untuk diproses lebih lanjut."
+        )
+    elif status == "UNDER REVIEW":
+        return (
+            f"Hasil analisis menunjukkan profil nasabah berada pada area pertimbangan. "
+            f"Terdapat kombinasi faktor yang belum sepenuhnya kuat, seperti keseimbangan antara pendapatan dan rasio kewajiban. "
+            f"Dengan skor {score:.1f}, disarankan dilakukan peninjauan tambahan sebelum keputusan akhir."
+        )
     else:
-        alasan.append("pendapatan cukup stabil")
+        return (
+            f"Berdasarkan aturan evaluasi, profil nasabah mengindikasikan tingkat risiko yang relatif tinggi. "
+            f"Faktor seperti pendapatan, rasio hutang, atau stabilitas kerja belum cukup mendukung kemampuan pembayaran. "
+            f"Skor {score:.1f} menunjukkan pengajuan kredit belum layak untuk disetujui."
+        )
 
-    if rasio_hutang < 0.2:
-        alasan.append("rasio hutang aman")
-    elif rasio_hutang > 0.3:
-        alasan.append("rasio hutang cukup tinggi")
+def penjelasan_ga(score, status, pendapatan, rasio_hutang, lama_kerja):
+    if status == "APPROVED":
+        return (
+            f"Dengan parameter yang telah dioptimasi, hasil evaluasi menunjukkan profil nasabah berada pada kondisi yang menguntungkan. "
+            f"Penyesuaian batas penilaian menghasilkan skor {score:.1f}, yang mengindikasikan kemampuan finansial cukup stabil "
+            f"dan risiko kredit relatif rendah."
+        )
+    elif status == "UNDER REVIEW":
+        return (
+            f"Hasil optimasi menunjukkan profil nasabah masih berada di area abu-abu. "
+            f"Beberapa indikator keuangan belum sepenuhnya konsisten untuk mendukung keputusan langsung. "
+            f"Skor {score:.1f} menunjukkan perlunya validasi tambahan sebelum persetujuan."
+        )
     else:
-        alasan.append("rasio hutang sedang")
-
-    if lama_kerja > 7:
-        alasan.append("pengalaman kerja sudah lama")
-    elif lama_kerja < 3:
-        alasan.append("masa kerja masih baru")
+        return (
+            f"Berdasarkan hasil evaluasi yang telah dioptimasi, profil nasabah menunjukkan kecenderungan risiko yang lebih tinggi. "
+            f"Nilai {score:.1f} mengindikasikan bahwa struktur keuangan saat ini belum cukup kuat "
+            f"untuk memenuhi kriteria kelayakan kredit."
+        )
+    
+def penjelasan_ann(status):
+    if status == "APPROVED":
+        return (
+            "Model pembelajaran dari data historis menunjukkan pola nasabah serupa memiliki performa pembayaran yang baik. "
+            "Hal ini mengindikasikan risiko kredit relatif rendah berdasarkan pengalaman data sebelumnya."
+        )
     else:
-        alasan.append("masa kerja cukup")
-
-    return ", ".join(alasan).capitalize() + "."
+        return (
+            "Berdasarkan pola dari data historis, profil nasabah memiliki kemiripan dengan kasus yang berisiko. "
+            "Model mengindikasikan potensi ketidaklancaran pembayaran sehingga pengajuan tidak direkomendasikan."
+        )
 
 def risk_color(status):
     return {"approved": "#059669", "rejected": "#DC2626", "review": "#D97706"}.get(status, "#8899AA")
@@ -823,7 +850,11 @@ elif "🔍" in menu:
             risk_label, risk_score, risk_col = risk_profile(pendapatan, rasio_hutang, lama_kerja)
             
             # Memanggil fungsi penjelasan_kelayakan
-            alasan_teks = penjelasan_kelayakan(pendapatan, rasio_hutang, lama_kerja)
+            alasan_fuzzy = penjelasan_fuzzy(hasil_fuzzy, fz_status, pendapatan, rasio_hutang, lama_kerja)
+            alasan_ga = penjelasan_ga(hasil_ga, ga_status, pendapatan, rasio_hutang, lama_kerja)
+
+            if hasil_ann is not None:
+                alasan_ann = penjelasan_ann(ann_label)
 
             record_id = f"APP-{1000 + len(st.session_state.history_data) + 1}"
             st.session_state.history_data.append({
@@ -886,7 +917,7 @@ elif "🔍" in menu:
                     <div class="method-name">Manual FIS</div>
                     <div class="method-score {score_color_class(fz_s)}">{hasil_fuzzy:.1f}<span style="font-size:1rem;opacity:0.5">/100</span></div>
                     <div class="method-label {label_class(fz_s)}">{'✅ ' if fz_s=='approved' else ('⛔ ' if fz_s=='rejected' else '⚠️ ')}{fz_status}</div>
-                    <div class="method-note">📌 Analisis Input: {alasan_teks}</div>
+                    <div class="method-note">📌 Analisis Input: {alasan_fuzzy}</div>
                 </div>
                 """, unsafe_allow_html=True)
 
@@ -897,7 +928,7 @@ elif "🔍" in menu:
                     <div class="method-name">Genetic Algorithm Tuning</div>
                     <div class="method-score {score_color_class(ga_s)}">{hasil_ga:.1f}<span style="font-size:1rem;opacity:0.5">/100</span></div>
                     <div class="method-label {label_class(ga_s)}">{'✅ ' if ga_s=='approved' else ('⛔ ' if ga_s=='rejected' else '⚠️ ')}{ga_status}</div>
-                    <div class="method-note">📌 Analisis Input: {alasan_teks}</div>
+                    <div class="method-note">📌 Analisis Input: {alasan_ga}</div>
                 </div>
                 """, unsafe_allow_html=True)
 
@@ -909,7 +940,7 @@ elif "🔍" in menu:
                         <div class="method-name">ANN Classifier</div>
                         <div class="method-score {score_color_class(ann_s)}" style="font-size:1.5rem; margin-top:16px;">{'Binary ML'}</div>
                         <div class="method-label {label_class(ann_s)}">{'✅ ' if ann_s=='approved' else '⛔ '}{ann_label}</div>
-                        <div class="method-note">📌 Analisis Input: {alasan_teks}</div>
+                        <div class="method-note">📌 Analisis Input: {alasan_ann}</div>
                     </div>
                     """, unsafe_allow_html=True)
                 else:
