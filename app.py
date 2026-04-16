@@ -1125,7 +1125,6 @@ elif "📊" in menu:
         display_df["Income"] = display_df["Income"].apply(format_currency)
         display_df["Debt Ratio"] = display_df["Debt Ratio"].apply(format_pct)
 
-        styled = display_df.style.applymap(style_status, subset=["Status"])
         st.dataframe(styled, use_container_width=True, height=380)
 
         st.caption(f"Menampilkan {len(filtered_df)} dari {total} nasabah yang dievaluasi pada sesi saat ini.")
