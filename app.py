@@ -1102,29 +1102,29 @@ elif "📊" in menu:
             status_filter = st.selectbox("Saring berdasarkan Status", ["Semua", "APPROVED", "REJECTED", "UNDER REVIEW"])
 
         filtered_df = df.copy()
+
         if search:
             filtered_df = filtered_df[
                 filtered_df["Name"].str.contains(search, case=False) |
                 filtered_df["ID"].str.contains(search, case=False)
             ]
-        
-        # Penyesuaian filter "Semua" karena dropdown-nya berbahasa Indonesia
+
         if status_filter != "Semua":
             filtered_df = filtered_df[filtered_df["Status"] == status_filter]
 
-        # Color-coded status
-        def style_status(val):
-            if val == "APPROVED":
-                return "color: #059669; font-weight: 700;"
-            elif val == "REJECTED":
-                return "color: #DC2626; font-weight: 700;"
-            else:
-                return "color: #D97706; font-weight: 700;"
-
+        # Format data
         display_df = filtered_df.copy()
         display_df["Income"] = display_df["Income"].apply(format_currency)
         display_df["Debt Ratio"] = display_df["Debt Ratio"].apply(format_pct)
 
-        st.dataframe(styled, use_container_width=True, height=380)
+        # Tambahin visual biar menarik
+        display_df["Status"] = display_df["Status"].replace({
+            "APPROVED": " APPROVED",
+            "REJECTED": " REJECTED",
+            "UNDER REVIEW": " UNDER REVIEW"
+        })
+
+        # Tampilkan tabel
+        st.dataframe(display_df, use_container_width=True, height=380)
 
         st.caption(f"Menampilkan {len(filtered_df)} dari {total} nasabah yang dievaluasi pada sesi saat ini.")
