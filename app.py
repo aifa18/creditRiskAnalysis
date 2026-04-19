@@ -8,6 +8,9 @@ import plotly.graph_objects as go
 import plotly.express as px
 from datetime import datetime
 import random
+import matplotlib.pyplot as plt
+from sklearn.preprocessing import StandardScaler
+from sklearn.neural_network import MLPClassifier
 
 # =========================
 # PAGE CONFIG
@@ -352,13 +355,15 @@ div[data-testid="stForm"] {
 .stTabs [data-baseweb="tab-list"] {
     background: #F0F4F8;
     border-radius: 12px;
-    padding: 4px;
-    gap: 4px;
+    padding: 6px;
+    gap: 10px;  /* dari 4px → 10px biar ga mepet */
 }
+
 .stTabs [data-baseweb="tab"] {
-    border-radius: 9px;
+    border-radius: 10px;
     font-weight: 600;
     font-size: 0.85rem;
+    padding: 10px 18px; /* ini bikin tombolnya lebih lega */
 }
 .stTabs [aria-selected="true"] {
     background: white !important;
@@ -530,6 +535,130 @@ def prediksi_ann(pendapatan, rasio_hutang, lama_kerja):
     data_scaled = scaler.transform(data)
     return ann_model.predict(data_scaled)[0]
 
+# =========================
+# VISUALISASI FUZZY MANUAL
+# =========================
+def visualisasi_fuzzy_manual():
+    plt.close('all')
+
+    x_income = np.arange(0, 200001, 1000)
+    x_debt = np.arange(0, 1.01, 0.01)
+    x_emp = np.arange(0, 51, 1)
+    x_kelayakan = np.arange(0, 101, 1)
+
+    fig, axes = plt.subplots(2, 2, figsize=(8, 5))  # ⬅️ lebih kecil
+
+    # Income
+    axes[0,0].plot(x_income, fuzz.trapmf(x_income, [0,0,30000,40000]))
+    axes[0,0].plot(x_income, fuzz.trapmf(x_income, [30000,40000,75000,85000]))
+    axes[0,0].plot(x_income, fuzz.trapmf(x_income, [75000,85000,200000,200000]))
+    axes[0,0].set_title("Pendapatan")
+
+    # Debt
+    axes[0,1].plot(x_debt, fuzz.trapmf(x_debt, [0,0,0.15,0.20]))
+    axes[0,1].plot(x_debt, fuzz.trapmf(x_debt, [0.15,0.20,0.25,0.30]))
+    axes[0,1].plot(x_debt, fuzz.trapmf(x_debt, [0.25,0.30,1,1]))
+    axes[0,1].set_title("Rasio Hutang")
+
+    # Emp
+    axes[1,0].plot(x_emp, fuzz.trapmf(x_emp, [0,0,2,3]))
+    axes[1,0].plot(x_emp, fuzz.trapmf(x_emp, [2,3,7,8]))
+    axes[1,0].plot(x_emp, fuzz.trapmf(x_emp, [7,8,50,50]))
+    axes[1,0].set_title("Lama Kerja")
+
+    # Output
+    axes[1,1].plot(x_kelayakan, fuzz.trapmf(x_kelayakan, [0,0,40,50]))
+    axes[1,1].plot(x_kelayakan, fuzz.trapmf(x_kelayakan, [40,50,65,75]))
+    axes[1,1].plot(x_kelayakan, fuzz.trapmf(x_kelayakan, [65,75,100,100]))
+    axes[1,1].set_title("Kelayakan")
+
+    plt.tight_layout()
+    return fig
+
+# =========================
+# VISUALISASI FUZZY + GA
+# =========================
+def visualisasi_ga(best_kromosom):
+    plt.close('all')
+
+    x_inc = np.sort(best_kromosom[0:4])
+    x_deb = np.sort(best_kromosom[4:8])
+    x_emp = np.sort(best_kromosom[8:12])
+
+    x_income = np.arange(0, 200001, 1000)
+    x_debt = np.arange(0, 1.01, 0.01)
+    x_emp_range = np.arange(0, 51, 1)
+
+    fig, axes = plt.subplots(1, 3, figsize=(9, 3))  # ⬅️ lebih kecil
+
+    axes[0].plot(x_income, fuzz.trapmf(x_income, [0,0,x_inc[0],x_inc[1]]))
+    axes[0].plot(x_income, fuzz.trapmf(x_income, [x_inc[0],x_inc[1],x_inc[2],x_inc[3]]))
+    axes[0].plot(x_income, fuzz.trapmf(x_income, [x_inc[2],x_inc[3],200000,200000]))
+    axes[0].set_title("Pendapatan")
+
+    axes[1].plot(x_debt, fuzz.trapmf(x_debt, [0,0,x_deb[0],x_deb[1]]))
+    axes[1].plot(x_debt, fuzz.trapmf(x_debt, [x_deb[0],x_deb[1],x_deb[2],x_deb[3]]))
+    axes[1].plot(x_debt, fuzz.trapmf(x_debt, [x_deb[2],x_deb[3],1,1]))
+    axes[1].set_title("Rasio Hutang")
+
+    axes[2].plot(x_emp_range, fuzz.trapmf(x_emp_range, [0,0,x_emp[0],x_emp[1]]))
+    axes[2].plot(x_emp_range, fuzz.trapmf(x_emp_range, [x_emp[0],x_emp[1],x_emp[2],x_emp[3]]))
+    axes[2].plot(x_emp_range, fuzz.trapmf(x_emp_range, [x_emp[2],x_emp[3],50,50]))
+    axes[2].set_title("Lama Kerja")
+
+    plt.tight_layout()
+    return fig
+
+
+# =========================
+# VISUALISASI ANN (2D)
+# =========================
+@st.cache_data
+def visualisasi_ann():
+    df = pd.read_csv("cleaned_credit_data.csv")
+
+    # rename biar konsisten
+    df = df.rename(columns={
+        "person_income": "income",
+        "loan_percent_income": "debt_ratio",
+        "person_emp_length": "emp_length",
+        "loan_status": "label"
+    })
+
+    # ambil 2 fitur untuk visualisasi (biar bisa diplot 2D)
+    X = df[['income', 'debt_ratio']]
+    y = df['label']
+
+    # scaling
+    scaler_vis = StandardScaler()
+    X_scaled = scaler_vis.fit_transform(X)
+
+    # model ANN
+    model_vis = MLPClassifier(hidden_layer_sizes=(10,5), max_iter=500, random_state=42)
+    model_vis.fit(X_scaled, y)
+
+    # meshgrid
+    h = 0.02
+    x_min, x_max = X_scaled[:, 0].min() - 1, X_scaled[:, 0].max() + 1
+    y_min, y_max = X_scaled[:, 1].min() - 1, X_scaled[:, 1].max() + 1
+
+    xx, yy = np.meshgrid(
+        np.arange(x_min, x_max, h),
+        np.arange(y_min, y_max, h)
+    )
+
+    Z = model_vis.predict(np.c_[xx.ravel(), yy.ravel()])
+    Z = Z.reshape(xx.shape)
+
+    fig, ax = plt.subplots(figsize=(6,4))  # diperkecil
+    ax.contourf(xx, yy, Z, alpha=0.3)
+    ax.scatter(X_scaled[:,0], X_scaled[:,1], c=y, edgecolors='k')
+
+    ax.set_title("Decision Boundary ANN (Real Data)")
+    ax.set_xlabel("Income (scaled)")
+    ax.set_ylabel("Debt Ratio (scaled)")
+
+    return fig
 
 # =========================
 # HELPER: interpret score & alasan
@@ -663,7 +792,7 @@ with st.sidebar:
     st.markdown('<div class="nav-section">Navigasi Utama</div>', unsafe_allow_html=True)
     menu = st.radio(
         "",
-        ["🏠  Home & About", "🔍  Applicant Analysis", "📊  Dashboard & History"],
+        ["🏠  Home & About", "🧠  Model Insight", "🔍  Applicant Analysis", "📊  Dashboard & History"],
         label_visibility="collapsed"
     )
 
@@ -708,9 +837,7 @@ if "🏠" in menu:
     # --- Bagian 1: Tentang Sistem ---
     st.markdown('<div class="section-title">🧩 Tentang Sistem</div>', unsafe_allow_html=True)
     st.markdown("""
-    **CreditGuard** adalah sistem analisis kelayakan kredit yang dirancang untuk membantu institusi keuangan dalam mengevaluasi risiko calon nasabah secara lebih objektif dan terstruktur.
-
-    Sistem ini menggabungkan beberapa pendekatan kecerdasan buatan untuk menghasilkan keputusan yang lebih akurat dan dapat dipertanggungjawabkan.
+    **CreditGuard** adalah sistem analisis kelayakan kredit yang dirancang untuk membantu institusi keuangan dalam mengevaluasi risiko calon nasabah secara lebih objektif dan terstruktur. Sistem ini menggabungkan beberapa pendekatan kecerdasan buatan untuk menghasilkan keputusan yang lebih akurat dan dapat dipertanggungjawabkan.
 
     | Metode Analisis | Pendekatan AI | Deskripsi Singkat |
     |--------|------|-------------|
@@ -760,6 +887,160 @@ if "🏠" in menu:
     
     st.write("")
     st.info("👈 **Sudah paham alurnya?** Silakan pilih menu **Applicant Analysis** di panel kiri untuk mulai melakukan simulasi kelayakan kredit!")
+
+# ============================================================
+# PAGE: MODEL INSIGHT
+# ============================================================
+elif "🧠" in menu:
+
+    st.markdown("""
+    <div class="page-header">
+        <h1>🧠 Model Insight & Process</h1>
+        <p>Penjelasan teknis mengenai dataset, metode Fuzzy, optimasi GA, dan model ANN.</p>
+    </div>
+    """, unsafe_allow_html=True)
+
+    tab1, tab2, tab3, tab4, tab5 = st.tabs([
+        "📊 Dataset",
+        "🔷 Fuzzy Manual",
+        "🧬 Fuzzy + GA",
+        "🤖 ANN Model",
+        "📈 Model Comparison"
+    ])
+
+    # =========================
+    # TAB 1: DATASET
+    # =========================
+    with tab1:
+        st.subheader("📊 Dataset Overview")
+
+        try:
+            df = pd.read_csv("cleaned_credit_data.csv")
+            st.write("Preview Data:")
+            st.dataframe(df.head(), use_container_width=True)
+
+            st.write("Statistik Data:")
+            st.write(df.describe())
+
+        except:
+            st.warning("Dataset tidak ditemukan.")
+
+    # =========================
+    # TAB 2: FUZZY MANUAL
+    # =========================
+    with tab2:
+        st.subheader("🔷 Fuzzy Manual")
+
+        st.write("Fungsi keanggotaan yang digunakan:")
+        fig1 = visualisasi_fuzzy_manual()
+        st.pyplot(fig1)
+
+        st.info("Model menggunakan rule-based system dengan membership function statis.")
+
+    # =========================
+    # TAB 3: FUZZY + GA
+    # =========================
+    with tab3:
+        st.subheader("🧬 Fuzzy + Genetic Algorithm")
+
+        st.write("Parameter hasil optimasi GA:")
+        st.code(best_ga)
+
+        st.write("Visualisasi membership hasil optimasi:")
+        fig2 = visualisasi_ga(best_ga)
+        st.pyplot(fig2)
+
+        st.info("Genetic Algorithm digunakan untuk mengoptimasi batas membership agar lebih adaptif terhadap data.")
+
+    # =========================
+    # TAB 4: ANN
+    # =========================
+    with tab4:
+        st.subheader("🤖 Artificial Neural Network")
+
+        if ANN_AVAILABLE:
+            st.success("Model ANN berhasil dimuat.")
+
+            st.write("Visualisasi Decision Boundary:")
+            fig3 = visualisasi_ann()
+            st.pyplot(fig3)
+            
+            st.info("Model menggunakan MLPClassifier dengan arsitektur hidden layer (10, 5). Berbeda dengan pendekatan fuzzy yang berbasis aturan eksplisit, ANN mempelajari pola dari data historis sehingga keputusan yang dihasilkan dipengaruhi oleh distribusi data.")
+        else:
+            st.error("Model ANN tidak ditemukan.")
+
+    # =========================
+    # TAB 5: MODEL COMPARISON
+    # =========================
+    with tab5:
+        st.subheader("📈 Perbandingan Performa Model")
+
+        st.markdown("""
+        Evaluasi dilakukan untuk membandingkan performa tiga pendekatan:
+        - **Fuzzy Manual (Rule-based)**
+        - **Fuzzy + Genetic Algorithm (Optimized)**
+        - **Artificial Neural Network (Data-driven)**
+
+        Metrik utama yang digunakan adalah **Accuracy**, yaitu tingkat ketepatan model dalam memprediksi kelayakan kredit.
+        """)
+
+        # =========================
+        # DATA HASIL AKURASI
+        # =========================
+        acc_fuzzy = 0.7879
+        acc_ann = 0.8150
+        acc_ga = 0.8434
+
+        results = pd.DataFrame({
+            "Model": ["Fuzzy Manual", "ANN", "Fuzzy + GA"],
+            "Accuracy": [acc_fuzzy, acc_ann, acc_ga]
+        })
+
+        # =========================
+        # TABEL
+        # =========================
+        st.markdown("### 📊 Tabel Perbandingan")
+        results_display = results.copy()
+        results_display["Accuracy"] = results_display["Accuracy"].apply(lambda x: f"{x*100:.2f}%")
+        st.dataframe(results_display, use_container_width=True)
+
+        # =========================
+        # BAR CHART
+        # =========================
+        st.markdown("### 📉 Visualisasi Performa Model")
+
+        fig = px.bar(
+            results,
+            x="Model",
+            y="Accuracy",
+            text=results["Accuracy"].apply(lambda x: f"{x*100:.2f}%"),
+        )
+
+        fig.update_layout(
+            yaxis=dict(range=[0,1]),
+            height=350
+        )
+
+        st.plotly_chart(fig, use_container_width=True)
+
+        # =========================
+        # INSIGHT ANALISIS
+        # =========================
+        st.markdown("### 🧠 Insight Analisis")
+
+        improvement_ga = (acc_ga - acc_fuzzy) * 100
+        improvement_ann = (acc_ann - acc_fuzzy) * 100
+
+        st.markdown(f"""
+        - Model **Fuzzy Manual** memiliki akurasi dasar sebesar **78.79%**, menunjukkan rule buatan manusia sudah cukup baik.
+        - Model **ANN** meningkat menjadi **81.50%**, karena mampu belajar dari pola data historis.
+        - Model **Fuzzy + GA** mencapai akurasi tertinggi yaitu **84.34%**.
+
+        📌 **Kesimpulan:**
+        - Optimasi menggunakan **Genetic Algorithm** berhasil meningkatkan performa sebesar **+{improvement_ga:.2f}%** dibanding sistem manual.
+        - ANN juga memberikan peningkatan sebesar **+{improvement_ann:.2f}%**, namun masih sedikit di bawah GA.
+        - Hal ini menunjukkan bahwa **optimasi parameter pada sistem berbasis aturan dapat menyaingi bahkan melampaui model machine learning** dalam kasus tertentu.
+        """)
 
 # ============================================================
 # PAGE: APPLICANT ANALYSIS
