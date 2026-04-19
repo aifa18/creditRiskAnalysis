@@ -356,14 +356,13 @@ div[data-testid="stForm"] {
     background: #F0F4F8;
     border-radius: 12px;
     padding: 6px;
-    gap: 10px;  /* dari 4px → 10px biar ga mepet */
+    gap: 10px;
 }
-
 .stTabs [data-baseweb="tab"] {
     border-radius: 10px;
     font-weight: 600;
     font-size: 0.85rem;
-    padding: 10px 18px; /* ini bikin tombolnya lebih lega */
+    padding: 10px 18px; 
 }
 .stTabs [aria-selected="true"] {
     background: white !important;
@@ -397,7 +396,6 @@ hr { border-color: rgba(0,0,0,0.06) !important; }
 }
 </style>
 """, unsafe_allow_html=True)
-
 
 # =========================
 # PARAMETER GA HASIL OPTIMASI
@@ -457,7 +455,6 @@ def fuzzy_manual(pendapatan, rasio_hutang, lama_kerja):
     except:
         return 0
 
-
 # =========================
 # FUZZY + GA
 # =========================
@@ -512,7 +509,6 @@ def fuzzy_ga(pendapatan, rasio_hutang, lama_kerja, kromosom):
     except:
         return 0
 
-
 # =========================
 # LOAD MODEL ANN
 # =========================
@@ -540,33 +536,28 @@ def prediksi_ann(pendapatan, rasio_hutang, lama_kerja):
 # =========================
 def visualisasi_fuzzy_manual():
     plt.close('all')
-
     x_income = np.arange(0, 200001, 1000)
     x_debt = np.arange(0, 1.01, 0.01)
     x_emp = np.arange(0, 51, 1)
     x_kelayakan = np.arange(0, 101, 1)
 
-    fig, axes = plt.subplots(2, 2, figsize=(8, 5))  # ⬅️ lebih kecil
+    fig, axes = plt.subplots(2, 2, figsize=(8, 5)) 
 
-    # Income
     axes[0,0].plot(x_income, fuzz.trapmf(x_income, [0,0,30000,40000]))
     axes[0,0].plot(x_income, fuzz.trapmf(x_income, [30000,40000,75000,85000]))
     axes[0,0].plot(x_income, fuzz.trapmf(x_income, [75000,85000,200000,200000]))
     axes[0,0].set_title("Pendapatan")
 
-    # Debt
     axes[0,1].plot(x_debt, fuzz.trapmf(x_debt, [0,0,0.15,0.20]))
     axes[0,1].plot(x_debt, fuzz.trapmf(x_debt, [0.15,0.20,0.25,0.30]))
     axes[0,1].plot(x_debt, fuzz.trapmf(x_debt, [0.25,0.30,1,1]))
     axes[0,1].set_title("Rasio Hutang")
 
-    # Emp
     axes[1,0].plot(x_emp, fuzz.trapmf(x_emp, [0,0,2,3]))
     axes[1,0].plot(x_emp, fuzz.trapmf(x_emp, [2,3,7,8]))
     axes[1,0].plot(x_emp, fuzz.trapmf(x_emp, [7,8,50,50]))
     axes[1,0].set_title("Lama Kerja")
 
-    # Output
     axes[1,1].plot(x_kelayakan, fuzz.trapmf(x_kelayakan, [0,0,40,50]))
     axes[1,1].plot(x_kelayakan, fuzz.trapmf(x_kelayakan, [40,50,65,75]))
     axes[1,1].plot(x_kelayakan, fuzz.trapmf(x_kelayakan, [65,75,100,100]))
@@ -580,7 +571,6 @@ def visualisasi_fuzzy_manual():
 # =========================
 def visualisasi_ga(best_kromosom):
     plt.close('all')
-
     x_inc = np.sort(best_kromosom[0:4])
     x_deb = np.sort(best_kromosom[4:8])
     x_emp = np.sort(best_kromosom[8:12])
@@ -589,7 +579,7 @@ def visualisasi_ga(best_kromosom):
     x_debt = np.arange(0, 1.01, 0.01)
     x_emp_range = np.arange(0, 51, 1)
 
-    fig, axes = plt.subplots(1, 3, figsize=(9, 3))  # ⬅️ lebih kecil
+    fig, axes = plt.subplots(1, 3, figsize=(9, 3))
 
     axes[0].plot(x_income, fuzz.trapmf(x_income, [0,0,x_inc[0],x_inc[1]]))
     axes[0].plot(x_income, fuzz.trapmf(x_income, [x_inc[0],x_inc[1],x_inc[2],x_inc[3]]))
@@ -609,137 +599,110 @@ def visualisasi_ga(best_kromosom):
     plt.tight_layout()
     return fig
 
-
 # =========================
-# VISUALISASI ANN (2D)
+# VISUALISASI ANN (2D & LOSS CURVE)
 # =========================
 @st.cache_data
 def visualisasi_ann():
-    df = pd.read_csv("cleaned_credit_data.csv")
+    try:
+        df = pd.read_csv("cleaned_credit_data.csv")
 
-    # rename biar konsisten
-    df = df.rename(columns={
-        "person_income": "income",
-        "loan_percent_income": "debt_ratio",
-        "person_emp_length": "emp_length",
-        "loan_status": "label"
-    })
+        # rename biar konsisten
+        df = df.rename(columns={
+            "person_income": "income",
+            "loan_percent_income": "debt_ratio",
+            "person_emp_length": "emp_length",
+            "loan_status": "label"
+        })
 
-    # ambil 2 fitur untuk visualisasi (biar bisa diplot 2D)
-    X = df[['income', 'debt_ratio']]
-    y = df['label']
+        # ambil 2 fitur untuk visualisasi (biar bisa diplot 2D)
+        X = df[['income', 'debt_ratio']]
+        y = df['label']
 
-    # scaling
-    scaler_vis = StandardScaler()
-    X_scaled = scaler_vis.fit_transform(X)
+        # scaling
+        scaler_vis = StandardScaler()
+        X_scaled = scaler_vis.fit_transform(X)
 
-    # model ANN
-    model_vis = MLPClassifier(hidden_layer_sizes=(10,5), max_iter=500, random_state=42)
-    model_vis.fit(X_scaled, y)
+        # model ANN
+        model_vis = MLPClassifier(hidden_layer_sizes=(10,5), max_iter=500, random_state=42)
+        model_vis.fit(X_scaled, y)
 
-    # meshgrid
-    h = 0.02
-    x_min, x_max = X_scaled[:, 0].min() - 1, X_scaled[:, 0].max() + 1
-    y_min, y_max = X_scaled[:, 1].min() - 1, X_scaled[:, 1].max() + 1
+        # meshgrid untuk decision boundary
+        h = 0.02
+        x_min, x_max = X_scaled[:, 0].min() - 1, X_scaled[:, 0].max() + 1
+        y_min, y_max = X_scaled[:, 1].min() - 1, X_scaled[:, 1].max() + 1
 
-    xx, yy = np.meshgrid(
-        np.arange(x_min, x_max, h),
-        np.arange(y_min, y_max, h)
-    )
+        xx, yy = np.meshgrid(
+            np.arange(x_min, x_max, h),
+            np.arange(y_min, y_max, h)
+        )
 
-    Z = model_vis.predict(np.c_[xx.ravel(), yy.ravel()])
-    Z = Z.reshape(xx.shape)
+        Z = model_vis.predict(np.c_[xx.ravel(), yy.ravel()])
+        Z = Z.reshape(xx.shape)
 
-    fig, ax = plt.subplots(figsize=(6,4))  # diperkecil
-    ax.contourf(xx, yy, Z, alpha=0.3)
-    ax.scatter(X_scaled[:,0], X_scaled[:,1], c=y, edgecolors='k')
+        # --- MEMBUAT 2 GAMBAR BERSEBELAHAN ---
+        fig, axes = plt.subplots(1, 2, figsize=(10, 4)) 
 
-    ax.set_title("Decision Boundary ANN (Real Data)")
-    ax.set_xlabel("Income (scaled)")
-    ax.set_ylabel("Debt Ratio (scaled)")
+        # Plot Loss Curve
+        axes[0].plot(model_vis.loss_curve_, color='darkblue', linewidth=2)
+        axes[0].set_title("Kurva Pembelajaran ANN (Loss Curve)")
+        axes[0].set_xlabel("Iterasi (Epochs)")
+        axes[0].set_ylabel("Tingkat Error (Loss)")
+        axes[0].grid(True, linestyle='--', alpha=0.7)
 
-    return fig
+        # Plot Decision Boundary
+        axes[1].contourf(xx, yy, Z, alpha=0.4, cmap='RdYlGn_r')
+        axes[1].scatter(X_scaled[:,0], X_scaled[:,1], c=y, edgecolors='k', cmap='RdYlGn_r', s=15, alpha=0.8)
+        axes[1].set_title("Visualisasi Keputusan (Decision Boundary)")
+        axes[1].set_xlabel("Income (Scaled)")
+        axes[1].set_ylabel("Debt Ratio (Scaled)")
+
+        plt.tight_layout()
+        return fig
+    except FileNotFoundError:
+        fig, ax = plt.subplots(figsize=(6, 4))
+        ax.text(0.5, 0.5, "File 'cleaned_credit_data.csv' tidak ditemukan.\nVisualisasi tidak dapat dimuat.", 
+                horizontalalignment='center', verticalalignment='center', color='red')
+        ax.axis('off')
+        return fig
+
 
 # =========================
 # HELPER: interpret score & alasan
 # =========================
 def interpret_fuzzy(score):
-    if score >= 65:
-        return "APPROVED", "approved"
-    elif score >= 40:
-        return "UNDER REVIEW", "review"
-    else:
-        return "REJECTED", "rejected"
+    if score >= 65: return "APPROVED", "approved"
+    elif score >= 40: return "UNDER REVIEW", "review"
+    else: return "REJECTED", "rejected"
 
 def interpret_ann(val):
-    if val == 0:
-        return "APPROVED", "approved"
-    else:
-        return "REJECTED", "rejected"
+    if val == 0: return "APPROVED", "approved"
+    else: return "REJECTED", "rejected"
 
 def penjelasan_fuzzy(score, status, pendapatan, rasio_hutang, lama_kerja):
     if status == "APPROVED":
-        return (
-            f"Berdasarkan evaluasi berbasis rule, profil nasabah menunjukkan kondisi yang cukup solid. "
-            f"Pendapatan dan stabilitas kerja mendukung kemampuan pembayaran, serta rasio kewajiban masih dalam batas aman. "
-            f"Skor {score:.1f} mencerminkan kelayakan kredit yang baik untuk diproses lebih lanjut."
-        )
+        return f"Berdasarkan evaluasi berbasis rule, kondisi cukup solid. Pendapatan dan stabilitas kerja mendukung kemampuan pembayaran. Skor {score:.1f} mencerminkan kelayakan baik."
     elif status == "UNDER REVIEW":
-        return (
-            f"Hasil analisis menunjukkan profil nasabah berada pada area pertimbangan. "
-            f"Terdapat kombinasi faktor yang belum sepenuhnya kuat, seperti keseimbangan antara pendapatan dan rasio kewajiban. "
-            f"Dengan skor {score:.1f}, disarankan dilakukan peninjauan tambahan sebelum keputusan akhir."
-        )
+        return f"Berada pada area pertimbangan. Keseimbangan pendapatan dan rasio kewajiban belum sepenuhnya kuat. Skor {score:.1f}, butuh peninjauan tambahan."
     else:
-        return (
-            f"Berdasarkan aturan evaluasi, profil nasabah mengindikasikan tingkat risiko yang relatif tinggi. "
-            f"Faktor seperti pendapatan, rasio hutang, atau stabilitas kerja belum cukup mendukung kemampuan pembayaran. "
-            f"Skor {score:.1f} menunjukkan pengajuan kredit belum layak untuk disetujui."
-        )
+        return f"Mengindikasikan risiko tinggi. Faktor pendapatan, rasio hutang, atau stabilitas kerja tidak mendukung. Skor {score:.1f}, tidak layak."
 
 def penjelasan_ga(score, status, pendapatan, rasio_hutang, lama_kerja):
     if status == "APPROVED":
-        return (
-            f"Dengan parameter yang telah dioptimasi, hasil evaluasi menunjukkan profil nasabah berada pada kondisi yang menguntungkan. "
-            f"Penyesuaian batas penilaian menghasilkan skor {score:.1f}, yang mengindikasikan kemampuan finansial cukup stabil "
-            f"dan risiko kredit relatif rendah."
-        )
+        return f"Dengan batas optimasi genetik, kondisi nasabah menguntungkan. Skor {score:.1f}, finansial cukup stabil."
     elif status == "UNDER REVIEW":
-        return (
-            f"Hasil optimasi menunjukkan profil nasabah masih berada di area abu-abu. "
-            f"Beberapa indikator keuangan belum sepenuhnya konsisten untuk mendukung keputusan langsung. "
-            f"Skor {score:.1f} menunjukkan perlunya validasi tambahan sebelum persetujuan."
-        )
+        return f"Optimasi GA menunjukkan area abu-abu. Skor {score:.1f}, butuh validasi sebelum persetujuan."
     else:
-        return (
-            f"Berdasarkan hasil evaluasi yang telah dioptimasi, profil nasabah menunjukkan kecenderungan risiko yang lebih tinggi. "
-            f"Nilai {score:.1f} mengindikasikan bahwa struktur keuangan saat ini belum cukup kuat "
-            f"untuk memenuhi kriteria kelayakan kredit."
-        )
+        return f"Evaluasi teroptimasi menunjukkan risiko tinggi. Skor {score:.1f}, struktur keuangan tidak cukup kuat."
     
 def penjelasan_ann(status):
-    if status == "APPROVED":
-        return (
-            "Model pembelajaran dari data historis menunjukkan pola nasabah serupa memiliki performa pembayaran yang baik. "
-            "Hal ini mengindikasikan risiko kredit relatif rendah berdasarkan pengalaman data sebelumnya."
-        )
-    else:
-        return (
-            "Berdasarkan pola dari data historis, profil nasabah memiliki kemiripan dengan kasus yang berisiko. "
-            "Model mengindikasikan potensi ketidaklancaran pembayaran sehingga pengajuan tidak direkomendasikan."
-        )
+    if status == "APPROVED": return "Pola data historis (Non-Linear) menunjukkan risiko rendah. Pengalaman serupa memiliki performa bayar yang baik."
+    else: return "Pola data historis mengindikasikan kemiripan dengan nasabah berisiko gagal bayar."
 
-def risk_color(status):
-    return {"approved": "#059669", "rejected": "#DC2626", "review": "#D97706"}.get(status, "#8899AA")
-
-def score_color_class(status):
-    return {"approved": "score-approved", "rejected": "score-rejected", "review": "score-review"}.get(status, "")
-
-def label_class(status):
-    return {"approved": "label-approved", "rejected": "label-rejected", "review": "label-review"}.get(status, "")
-
-def verdict_class(status):
-    return {"approved": "verdict-approved", "rejected": "verdict-rejected", "review": "verdict-review"}.get(status, "verdict-review")
+def risk_color(status): return {"approved": "#059669", "rejected": "#DC2626", "review": "#D97706"}.get(status, "#8899AA")
+def score_color_class(status): return {"approved": "score-approved", "rejected": "score-rejected", "review": "score-review"}.get(status, "")
+def label_class(status): return {"approved": "label-approved", "rejected": "label-rejected", "review": "label-review"}.get(status, "")
+def verdict_class(status): return {"approved": "verdict-approved", "rejected": "verdict-rejected", "review": "verdict-review"}.get(status, "verdict-review")
 
 def overall_verdict(s1, s2, ann_val):
     statuses = [s1, s2]
@@ -748,12 +711,9 @@ def overall_verdict(s1, s2, ann_val):
         statuses.append(ann_s)
     approved = statuses.count("APPROVED")
     rejected = statuses.count("REJECTED")
-    if approved > rejected:
-        return "APPROVED", "approved", f"{approved}/{len(statuses)} methods recommend approval"
-    elif rejected > approved:
-        return "REJECTED", "rejected", f"{rejected}/{len(statuses)} methods recommend rejection"
-    else:
-        return "UNDER REVIEW", "review", "Methods disagree — manual review recommended"
+    if approved > rejected: return "APPROVED", "approved", f"{approved}/{len(statuses)} model menyetujui"
+    elif rejected > approved: return "REJECTED", "rejected", f"{rejected}/{len(statuses)} model menolak"
+    else: return "UNDER REVIEW", "review", "Hasil model seimbang — Butuh pertimbangan manual"
 
 def risk_profile(pendapatan, rasio_hutang, lama_kerja):
     score = 0
@@ -766,15 +726,13 @@ def risk_profile(pendapatan, rasio_hutang, lama_kerja):
     if lama_kerja > 7: score += 30
     elif lama_kerja > 3: score += 18
     else: score += 5
+    
     if score >= 70: return "Low Risk", score, "#059669"
     elif score >= 40: return "Medium Risk", score, "#D97706"
     else: return "High Risk", score, "#DC2626"
 
-def format_currency(val):
-    return f"${val:,.0f}"
-
-def format_pct(val):
-    return f"{val*100:.1f}%"
+def format_currency(val): return f"${val:,.0f}"
+def format_pct(val): return f"{val*100:.1f}%"
 
 
 # =========================
@@ -823,6 +781,7 @@ with st.sidebar:
     </div>
     """, unsafe_allow_html=True)
 
+
 # ============================================================
 # PAGE: HOME & ABOUT 
 # ============================================================
@@ -834,7 +793,6 @@ if "🏠" in menu:
     </div>
     """, unsafe_allow_html=True)
 
-    # --- Bagian 1: Tentang Sistem ---
     st.markdown('<div class="section-title">🧩 Tentang Sistem</div>', unsafe_allow_html=True)
     st.markdown("""
     **CreditGuard** adalah sistem analisis kelayakan kredit yang dirancang untuk membantu institusi keuangan dalam mengevaluasi risiko calon nasabah secara lebih objektif dan terstruktur. Sistem ini menggabungkan beberapa pendekatan kecerdasan buatan untuk menghasilkan keputusan yang lebih akurat dan dapat dipertanggungjawabkan.
@@ -850,10 +808,7 @@ if "🏠" in menu:
     - Rasio Hutang terhadap Pendapatan
     - Lama Masa Kerja (tahun)
     """)
-    
     st.write("---")
-
-    # --- Bagian 2: Cara Penggunaan ---
     st.markdown('<div class="section-title">💡 Cara Penggunaan Aplikasi</div>', unsafe_allow_html=True)
     st.write("")
 
@@ -866,7 +821,6 @@ if "🏠" in menu:
             <p style="font-size: 0.9rem; color: #8899AA;">Masuk ke menu <b>🔍 Applicant Analysis</b> di sidebar. Isi profil keuangan nasabah yang ingin dievaluasi.</p>
         </div>
         """, unsafe_allow_html=True)
-    
     with col2:
         st.markdown("""
         <div class="step-box">
@@ -875,7 +829,6 @@ if "🏠" in menu:
             <p style="font-size: 0.9rem; color: #8899AA;">Klik tombol <b>⚡ Run Credit Analysis</b>. Ketiga "otak" sistem (Fuzzy, GA, ANN) akan langsung bekerja memproses data tersebut.</p>
         </div>
         """, unsafe_allow_html=True)
-
     with col3:
         st.markdown("""
         <div class="step-box">
@@ -886,7 +839,8 @@ if "🏠" in menu:
         """, unsafe_allow_html=True)
     
     st.write("")
-    st.info("👈 **Sudah paham alurnya?** Silakan pilih menu **Applicant Analysis** di panel kiri untuk mulai melakukan simulasi kelayakan kredit!")
+    st.info("👈 **Sudah paham alurnya?** Silakan pilih menu di panel kiri untuk mulai melakukan simulasi!")
+
 
 # ============================================================
 # PAGE: MODEL INSIGHT
@@ -908,85 +862,65 @@ elif "🧠" in menu:
         "📈 Model Comparison"
     ])
 
-    # =========================
-    # TAB 1: DATASET
-    # =========================
     with tab1:
         st.subheader("📊 Dataset Overview")
-
         try:
             df = pd.read_csv("cleaned_credit_data.csv")
             st.write("Preview Data:")
             st.dataframe(df.head(), use_container_width=True)
-
             st.write("Statistik Data:")
             st.write(df.describe())
+        except FileNotFoundError:
+            st.warning("Dataset 'cleaned_credit_data.csv' tidak ditemukan di folder. Mohon unggah file CSV tersebut.")
 
-        except:
-            st.warning("Dataset tidak ditemukan.")
-
-    # =========================
-    # TAB 2: FUZZY MANUAL
-    # =========================
     with tab2:
-        st.subheader("🔷 Fuzzy Manual")
-
-        st.write("Fungsi keanggotaan yang digunakan:")
+        st.subheader("🔷 Fuzzy Manual (Tahap 1)")
+        st.write("Fungsi keanggotaan (Membership Function) Pakar:")
         fig1 = visualisasi_fuzzy_manual()
         st.pyplot(fig1)
+        st.info("Sistem berbasis aturan (Rule-based) menggunakan intuisi manusia dengan batasan trapesium kaku secara absolut.")
 
-        st.info("Model menggunakan rule-based system dengan membership function statis.")
-
-    # =========================
-    # TAB 3: FUZZY + GA
-    # =========================
     with tab3:
-        st.subheader("🧬 Fuzzy + Genetic Algorithm")
+        st.subheader("🧬 Fuzzy + Genetic Algorithm (Tahap 2)")
+        st.write("Titik Koordinat Batas Kurva Hasil Optimasi GA (Kromosom Terbaik):")
+        
+        col_ga1, col_ga2, col_ga3 = st.columns(3)
+        with col_ga1:
+            st.markdown("💰 **Pendapatan (USD)**")
+            st.code(best_ga[0:4])
+        with col_ga2:
+            st.markdown("📉 **Rasio Hutang**")
+            st.code(best_ga[4:8])
+        with col_ga3:
+            st.markdown("🧑‍💼 **Lama Kerja (Tahun)**")
+            st.code(best_ga[8:12])
 
-        st.write("Parameter hasil optimasi GA:")
-        st.code(best_ga)
-
-        st.write("Visualisasi membership hasil optimasi:")
+        st.write("Visualisasi pergeseran membership hasil optimasi:")
         fig2 = visualisasi_ga(best_ga)
         st.pyplot(fig2)
+        st.info("Algoritma Genetika (GA) menggeser titik kurva untuk menutup celah 'blank space', paling terlihat jelas rentangnya melebar pada variabel Rasio Hutang.")
 
-        st.info("Genetic Algorithm digunakan untuk mengoptimasi batas membership agar lebih adaptif terhadap data.")
-
-    # =========================
-    # TAB 4: ANN
-    # =========================
     with tab4:
-        st.subheader("🤖 Artificial Neural Network")
-
+        st.subheader("🤖 Artificial Neural Network (Tahap 3)")
         if ANN_AVAILABLE:
             st.success("Model ANN berhasil dimuat.")
-
-            st.write("Visualisasi Decision Boundary:")
+            st.write("Visualisasi Proses Belajar & Keputusan ANN:")
             fig3 = visualisasi_ann()
             st.pyplot(fig3)
             
-            st.info("Model menggunakan MLPClassifier dengan arsitektur hidden layer (10, 5). Berbeda dengan pendekatan fuzzy yang berbasis aturan eksplisit, ANN mempelajari pola dari data historis sehingga keputusan yang dihasilkan dipengaruhi oleh distribusi data.")
+            st.info("""
+            **Cara Membaca Grafik:**
+            - **Kurva Kiri (Loss Curve):** Membuktikan bahwa algoritma *Backpropagation* berhasil menurunkan tingkat error secara drastis pada iterasi awal dan mencapai konvergensi stabil.
+            - **Grafik Kanan (Decision Boundary):** Menunjukkan bagaimana ANN memisahkan nasabah secara *non-linear* (berkelok), belajar langsung dari persebaran data historis.
+            """)
         else:
             st.error("Model ANN tidak ditemukan.")
 
-    # =========================
-    # TAB 5: MODEL COMPARISON
-    # =========================
     with tab5:
         st.subheader("📈 Perbandingan Performa Model")
+        st.markdown("Metrik utama yang digunakan adalah **Accuracy**, yaitu tingkat ketepatan model dalam memprediksi kelayakan kredit dari 2000 sampel data.")
 
-        st.markdown("""
-        Evaluasi dilakukan untuk membandingkan performa tiga pendekatan:
-        - **Fuzzy Manual (Rule-based)**
-        - **Fuzzy + Genetic Algorithm (Optimized)**
-        - **Artificial Neural Network (Data-driven)**
-
-        Metrik utama yang digunakan adalah **Accuracy**, yaitu tingkat ketepatan model dalam memprediksi kelayakan kredit.
-        """)
-
-        # =========================
-        # DATA HASIL AKURASI
-        # =========================
+        # --- VARIABEL YANG SEMPAT HILANG ADA DI SINI ---
         acc_fuzzy = 0.7879
         acc_ann = 0.8150
         acc_ga = 0.8434
@@ -996,51 +930,41 @@ elif "🧠" in menu:
             "Accuracy": [acc_fuzzy, acc_ann, acc_ga]
         })
 
-        # =========================
-        # TABEL
-        # =========================
         st.markdown("### 📊 Tabel Perbandingan")
         results_display = results.copy()
         results_display["Accuracy"] = results_display["Accuracy"].apply(lambda x: f"{x*100:.2f}%")
         st.dataframe(results_display, use_container_width=True)
 
-        # =========================
-        # BAR CHART
-        # =========================
         st.markdown("### 📉 Visualisasi Performa Model")
-
         fig = px.bar(
             results,
             x="Model",
             y="Accuracy",
             text=results["Accuracy"].apply(lambda x: f"{x*100:.2f}%"),
+            color="Model",
+            color_discrete_map={
+                "Fuzzy Manual": "#636EFA",
+                "ANN": "#EF553B",
+                "Fuzzy + GA": "#00CC96"
+            }
         )
-
-        fig.update_layout(
-            yaxis=dict(range=[0,1]),
-            height=350
-        )
-
+        fig.update_layout(yaxis=dict(range=[0,1]), height=350, showlegend=False)
         st.plotly_chart(fig, use_container_width=True)
 
-        # =========================
-        # INSIGHT ANALISIS
-        # =========================
         st.markdown("### 🧠 Insight Analisis")
-
         improvement_ga = (acc_ga - acc_fuzzy) * 100
         improvement_ann = (acc_ann - acc_fuzzy) * 100
 
         st.markdown(f"""
-        - Model **Fuzzy Manual** memiliki akurasi dasar sebesar **78.79%**, menunjukkan rule buatan manusia sudah cukup baik.
-        - Model **ANN** meningkat menjadi **81.50%**, karena mampu belajar dari pola data historis.
-        - Model **Fuzzy + GA** mencapai akurasi tertinggi yaitu **84.34%**.
+        - Model **Fuzzy Manual** memiliki akurasi dasar **78.79%**. Namun, model ini kaku dan memiliki *blank space*, sehingga hanya mampu mengevaluasi **1.155 dari 2.000 data** (42.25% data gagal dievaluasi).
+        - Model **ANN (Machine Learning)** berhasil mengevaluasi seluruh data dengan akurasi **81.50%** karena kemampuannya menangkap pola *non-linear*.
+        - Model **Fuzzy + GA** mencapai performa tertinggi yaitu **84.34%** dan berhasil mengevaluasi seluruh **2.000 data** tanpa *error*.
 
-        📌 **Kesimpulan:**
-        - Optimasi menggunakan **Genetic Algorithm** berhasil meningkatkan performa sebesar **+{improvement_ga:.2f}%** dibanding sistem manual.
-        - ANN juga memberikan peningkatan sebesar **+{improvement_ann:.2f}%**, namun masih sedikit di bawah GA.
-        - Hal ini menunjukkan bahwa **optimasi parameter pada sistem berbasis aturan dapat menyaingi bahkan melampaui model machine learning** dalam kasus tertentu.
+        📌 **Kesimpulan Akademis:**
+        - Optimasi menggunakan **Genetic Algorithm** berhasil meningkatkan akurasi sebesar **+{improvement_ga:.2f}%** sekaligus menutup celah kelemahan *blank space* pada sistem manual.
+        - Eksperimen ini membuktikan bahwa optimasi evolusioner (GA) pada sistem pakar tidak hanya mampu **melampaui akurasi model black-box (ANN)**, tetapi juga tetap mempertahankan nilai *interpretabilitas* (logika manusia) yang sangat penting di industri perbankan.
         """)
+
 
 # ============================================================
 # PAGE: APPLICANT ANALYSIS
@@ -1054,15 +978,11 @@ elif "🔍" in menu:
     </div>
     """, unsafe_allow_html=True)
 
-# ---- INPUT FORM ----
     with st.container():
         st.markdown('<div class="section-title">👤 Informasi Pribadi Nasabah</div>', unsafe_allow_html=True)
-
         col1, col2, col3 = st.columns(3)
-        with col1:
-            nama = st.text_input("Nama Lengkap", placeholder="Contoh: Budi Santoso")
-        with col2:
-            umur = st.number_input("Usia (Tahun)", min_value=18, max_value=75, value=30)
+        with col1: nama = st.text_input("Nama Lengkap", placeholder="Contoh: Budi Santoso")
+        with col2: umur = st.number_input("Usia (Tahun)", min_value=18, max_value=75, value=30)
         with col3:
             pekerjaan = st.selectbox("Jenis Pekerjaan", [
                 "Sektor Swasta", "PNS / Pegawai Pemerintahan",
@@ -1071,46 +991,31 @@ elif "🔍" in menu:
 
         st.markdown("---")
         st.markdown('<div class="section-title">📋 Profil Keuangan</div>', unsafe_allow_html=True)
-
         colA, colB, colC = st.columns(3)
         with colA:
             st.markdown("**Pendapatan Tahunan (USD)**")
-            pendapatan = st.number_input(
-                "Annual Income", min_value=0, max_value=200000,
-                value=55000, step=1000, label_visibility="collapsed"
-            )
+            pendapatan = st.number_input("Annual Income", min_value=0, max_value=200000, value=55000, step=1000, label_visibility="collapsed")
             st.caption(f"Estimasi: {format_currency(pendapatan/12)} / bulan")
 
         with colB:
             st.markdown("**Rasio Hutang (Debt-to-Income)**")
-            rasio_hutang = st.slider(
-                "Debt Ratio", min_value=0.0, max_value=1.0,
-                value=0.22, step=0.01, label_visibility="collapsed"
-            )
+            rasio_hutang = st.slider("Debt Ratio", min_value=0.0, max_value=1.0, value=0.22, step=0.01, label_visibility="collapsed")
             risk_lbl = "🟢 Aman" if rasio_hutang < 0.20 else ("🟡 Waspada" if rasio_hutang < 0.30 else "🔴 Bahaya")
             st.caption(f"{format_pct(rasio_hutang)} — {risk_lbl}")
 
         with colC:
             st.markdown("**Lama Masa Kerja (Tahun)**")
-            lama_kerja = st.number_input(
-                "Years", min_value=0, max_value=50,
-                value=5, label_visibility="collapsed"
-            )
+            lama_kerja = st.number_input("Years", min_value=0, max_value=50, value=5, label_visibility="collapsed")
             exp_lbl = "🔴 Karyawan Baru" if lama_kerja < 2 else ("🟡 Menengah" if lama_kerja < 7 else "🟢 Berpengalaman")
             st.caption(f"{lama_kerja} tahun — {exp_lbl}")
 
-        st.markdown("</div>", unsafe_allow_html=True)
-
     st.write("")
-
-    # ---- ANALYZE BUTTON ----
     btn_col = st.columns([1, 2, 1])
     with btn_col[1]:
         analyze = st.button("⚡ Run Credit Analysis", use_container_width=True, type="primary")
 
     st.write("")
 
-    # ---- RESULTS ----
     if analyze:
         if not nama.strip():
             st.warning("Mohon isi nama nasabah terlebih dahulu sebelum menjalankan analisis.")
@@ -1130,26 +1035,18 @@ elif "🔍" in menu:
             ov_status, ov_s, ov_reason = overall_verdict(fz_status, ga_status, hasil_ann)
             risk_label, risk_score, risk_col = risk_profile(pendapatan, rasio_hutang, lama_kerja)
             
-            # Memanggil fungsi penjelasan_kelayakan
             alasan_fuzzy = penjelasan_fuzzy(hasil_fuzzy, fz_status, pendapatan, rasio_hutang, lama_kerja)
             alasan_ga = penjelasan_ga(hasil_ga, ga_status, pendapatan, rasio_hutang, lama_kerja)
-
-            if hasil_ann is not None:
-                alasan_ann = penjelasan_ann(ann_label)
+            if hasil_ann is not None: alasan_ann = penjelasan_ann(ann_label)
 
             record_id = f"APP-{1000 + len(st.session_state.history_data) + 1}"
             st.session_state.history_data.append({
-                "ID": record_id,
-                "Name": nama,
-                "Income": pendapatan,
-                "Debt Ratio": rasio_hutang,
-                "Emp. Years": lama_kerja,
-                "Fuzzy Score": round(hasil_fuzzy, 1),
-                "Status": ov_status,
+                "ID": record_id, "Name": nama, "Income": pendapatan,
+                "Debt Ratio": rasio_hutang, "Emp. Years": lama_kerja,
+                "Fuzzy Score": round(hasil_fuzzy, 1), "Status": ov_status,
                 "Date": datetime.now().strftime("%Y-%m-%d %H:%M")
             })
 
-            # Applicant badge
             initials = "".join([w[0].upper() for w in nama.strip().split()[:2]])
             st.markdown(f"""
             <div class="applicant-badge">
@@ -1161,9 +1058,7 @@ elif "🔍" in menu:
             </div>
             """, unsafe_allow_html=True)
 
-            # Overall verdict + risk
             col_verdict, col_risk = st.columns([3, 1])
-
             with col_verdict:
                 st.markdown(f"""
                 <div class="{verdict_class(ov_s)}">
@@ -1186,8 +1081,6 @@ elif "🔍" in menu:
                 """, unsafe_allow_html=True)
 
             st.write("")
-
-            # Three method cards
             st.markdown('<div class="section-title">📊 Rincian Hasil dari Masing-Masing Metode</div>', unsafe_allow_html=True)
             mc1, mc2, mc3 = st.columns(3)
 
@@ -1229,94 +1122,36 @@ elif "🔍" in menu:
                     <div class="method-card" style="opacity:0.5;">
                         <div class="method-badge badge-ann">Neural Network</div>
                         <div class="method-name">ANN Classifier</div>
-                        <div style="color:#8899AA; font-size:0.85rem; margin-top:16px;">⚠️ Model file not found.<br>Pastikan file <code>ann_model.pkl</code> ada di folder aplikasi.</div>
+                        <div style="color:#8899AA; font-size:0.85rem; margin-top:16px;">⚠️ Model file not found.</div>
                     </div>
                     """, unsafe_allow_html=True)
 
-            st.write("")
-
-            # Key factors breakdown
-            st.markdown('<div class="section-title">🔎 Breakdown Variabel Penentu</div>', unsafe_allow_html=True)
-            f1, f2, f3 = st.columns(3)
-
-            income_score = 35 if pendapatan > 75000 else (20 if pendapatan > 40000 else 5)
-            dr_score = 35 if rasio_hutang < 0.20 else (18 if rasio_hutang < 0.30 else 3)
-            emp_score = 30 if lama_kerja > 7 else (18 if lama_kerja > 3 else 5)
-
-            for col, label, val, score, max_s, icon in [
-                (f1, "Pendapatan", format_currency(pendapatan), income_score, 35, "💰"),
-                (f2, "Rasio Hutang", format_pct(rasio_hutang), dr_score, 35, "📉"),
-                (f3, "Masa Kerja", f"{lama_kerja} thn", emp_score, 30, "🧑‍💼"),
-            ]:
-                bar_w = int(score / max_s * 100)
-                bar_c = "#059669" if bar_w >= 70 else ("#D97706" if bar_w >= 40 else "#DC2626")
-                with col:
-                    st.markdown(f"""
-                    <div class="metric-card">
-                        <div class="metric-label">{icon} {label}</div>
-                        <div class="metric-value" style="font-size:1.5rem;">{val}</div>
-                        <div class="risk-bar-container" style="margin-top:10px;">
-                            <div class="risk-bar" style="width:{bar_w}%; background:{bar_c};"></div>
-                        </div>
-                        <div class="metric-sub" style="margin-top:4px;">Kekuatan Skor: {score}/{max_s}</div>
-                    </div>
-                    """, unsafe_allow_html=True)
-
-            # Fuzzy score radar chart
             st.write("")
             st.markdown('<div class="section-title">📈 Visualisasi Skor Evaluasi</div>', unsafe_allow_html=True)
 
             chart_col1, chart_col2 = st.columns(2)
             with chart_col1:
-                # Gauge for Fuzzy Manual
                 fig_gauge = go.Figure(go.Indicator(
-                    mode="gauge+number",
-                    value=hasil_fuzzy,
-                    domain={'x': [0, 1], 'y': [0, 1]},
+                    mode="gauge+number", value=hasil_fuzzy, domain={'x': [0, 1], 'y': [0, 1]},
                     title={'text': "Skor Fuzzy Manual", 'font': {'size': 14, 'family': 'Plus Jakarta Sans'}},
                     number={'font': {'size': 32, 'family': 'Space Mono'}},
-                    gauge={
-                        'axis': {'range': [0, 100], 'tickwidth': 1},
-                        'bar': {'color': risk_color(fz_s)},
-                        'steps': [
-                            {'range': [0, 40], 'color': '#FEE2E2'},
-                            {'range': [40, 65], 'color': '#FEF3C7'},
-                            {'range': [65, 100], 'color': '#D1FAE5'}
-                        ],
-                        'threshold': {'line': {'color': '#0A1628', 'width': 2}, 'value': hasil_fuzzy}
-                    }
+                    gauge={'axis': {'range': [0, 100], 'tickwidth': 1}, 'bar': {'color': risk_color(fz_s)},
+                           'steps': [{'range': [0, 40], 'color': '#FEE2E2'}, {'range': [40, 65], 'color': '#FEF3C7'}, {'range': [65, 100], 'color': '#D1FAE5'}],
+                           'threshold': {'line': {'color': '#0A1628', 'width': 2}, 'value': hasil_fuzzy}}
                 ))
-                fig_gauge.update_layout(
-                    height=240, margin=dict(l=20, r=20, t=50, b=10),
-                    paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
-                    font={'family': 'Plus Jakarta Sans'}
-                )
+                fig_gauge.update_layout(height=240, margin=dict(l=20, r=20, t=50, b=10), paper_bgcolor='rgba(0,0,0,0)', font={'family': 'Plus Jakarta Sans'})
                 st.plotly_chart(fig_gauge, use_container_width=True)
 
             with chart_col2:
-                # Gauge for GA
                 fig_gauge2 = go.Figure(go.Indicator(
-                    mode="gauge+number",
-                    value=hasil_ga,
-                    domain={'x': [0, 1], 'y': [0, 1]},
+                    mode="gauge+number", value=hasil_ga, domain={'x': [0, 1], 'y': [0, 1]},
                     title={'text': "Skor Fuzzy + Algoritma Genetika", 'font': {'size': 14, 'family': 'Plus Jakarta Sans'}},
                     number={'font': {'size': 32, 'family': 'Space Mono'}},
-                    gauge={
-                        'axis': {'range': [0, 100], 'tickwidth': 1},
-                        'bar': {'color': risk_color(ga_s)},
-                        'steps': [
-                            {'range': [0, 40], 'color': '#FEE2E2'},
-                            {'range': [40, 65], 'color': '#FEF3C7'},
-                            {'range': [65, 100], 'color': '#D1FAE5'}
-                        ],
-                        'threshold': {'line': {'color': '#0A1628', 'width': 2}, 'value': hasil_ga}
-                    }
+                    gauge={'axis': {'range': [0, 100], 'tickwidth': 1}, 'bar': {'color': risk_color(ga_s)},
+                           'steps': [{'range': [0, 40], 'color': '#FEE2E2'}, {'range': [40, 65], 'color': '#FEF3C7'}, {'range': [65, 100], 'color': '#D1FAE5'}],
+                           'threshold': {'line': {'color': '#0A1628', 'width': 2}, 'value': hasil_ga}}
                 ))
-                fig_gauge2.update_layout(
-                    height=240, margin=dict(l=20, r=20, t=50, b=10),
-                    paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
-                    font={'family': 'Plus Jakarta Sans'}
-                )
+                fig_gauge2.update_layout(height=240, margin=dict(l=20, r=20, t=50, b=10), paper_bgcolor='rgba(0,0,0,0)', font={'family': 'Plus Jakarta Sans'})
                 st.plotly_chart(fig_gauge2, use_container_width=True)
 
 
@@ -1337,7 +1172,6 @@ elif "📊" in menu:
     else:
         df = pd.DataFrame(st.session_state.history_data)
 
-        # ---- SUMMARY METRICS ----
         total = len(df)
         approved = (df["Status"] == "APPROVED").sum()
         rejected = (df["Status"] == "REJECTED").sum()
@@ -1347,8 +1181,8 @@ elif "📊" in menu:
         m1, m2, m3, m4 = st.columns(4)
         for col, label, val, sub in [
             (m1, "Total Evaluasi", total, "Data sesi saat ini"),
-            (m2, "✅ Layak (Approved)", approved, f"Tingkat persetujuan: {approved/total*100:.0f}%"),
-            (m3, "⛔ Ditolak (Rejected)", rejected, f"Tingkat penolakan: {rejected/total*100:.0f}%"),
+            (m2, "✅ Layak", approved, f"Persetujuan: {approved/total*100:.0f}%"),
+            (m3, "⛔ Ditolak", rejected, f"Penolakan: {rejected/total*100:.0f}%"),
             (m4, "💰 Rata-rata Gaji", format_currency(avg_income), "Dari total nasabah"),
         ]:
             with col:
@@ -1361,82 +1195,46 @@ elif "📊" in menu:
                 """, unsafe_allow_html=True)
 
         st.write("")
-
-        # ---- CHARTS ----
         ch1, ch2 = st.columns(2)
 
         with ch1:
             st.markdown('<div class="section-title">Distribusi Keputusan Akhir</div>', unsafe_allow_html=True)
             fig_pie = go.Figure(go.Pie(
-                labels=["Approved", "Rejected", "Under Review"],
-                values=[approved, rejected, review],
-                hole=0.55,
-                marker_colors=["#059669", "#DC2626", "#D97706"],
-                textinfo='label+percent',
-                textfont=dict(family='Plus Jakarta Sans', size=12)
+                labels=["Approved", "Rejected", "Under Review"], values=[approved, rejected, review], hole=0.55,
+                marker_colors=["#059669", "#DC2626", "#D97706"], textinfo='label+percent', textfont=dict(family='Plus Jakarta Sans', size=12)
             ))
-            fig_pie.update_layout(
-                showlegend=False, height=260,
-                margin=dict(l=10, r=10, t=10, b=10),
-                paper_bgcolor='rgba(0,0,0,0)'
-            )
+            fig_pie.update_layout(showlegend=False, height=260, margin=dict(l=10, r=10, t=10, b=10), paper_bgcolor='rgba(0,0,0,0)')
             st.plotly_chart(fig_pie, use_container_width=True)
 
         with ch2:
             st.markdown('<div class="section-title">Sebaran Pendapatan vs Skor Kelayakan</div>', unsafe_allow_html=True)
             colors_map = {"APPROVED": "#059669", "REJECTED": "#DC2626", "UNDER REVIEW": "#D97706"}
-            fig_scatter = px.scatter(
-                df, x="Income", y="Fuzzy Score",
-                color="Status",
-                color_discrete_map=colors_map,
-                hover_data=["Name", "Debt Ratio", "Emp. Years"],
-                size_max=12
-            )
-            fig_scatter.update_layout(
-                height=260, margin=dict(l=10, r=10, t=10, b=10),
-                paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
-                legend=dict(orientation="h", yanchor="bottom", y=1.02),
-                font=dict(family='Plus Jakarta Sans')
-            )
+            fig_scatter = px.scatter(df, x="Income", y="Fuzzy Score", color="Status", color_discrete_map=colors_map, hover_data=["Name", "Debt Ratio"], size_max=12)
+            fig_scatter.update_layout(height=260, margin=dict(l=10, r=10, t=10, b=10), paper_bgcolor='rgba(0,0,0,0)', legend=dict(orientation="h", yanchor="bottom", y=1.02), font=dict(family='Plus Jakarta Sans'))
             fig_scatter.update_traces(marker=dict(size=9, opacity=0.8))
             st.plotly_chart(fig_scatter, use_container_width=True)
 
         st.write("")
-
-        # ---- HISTORY TABLE ----
         st.markdown('<div class="section-title">📋 Riwayat Detail Nasabah</div>', unsafe_allow_html=True)
 
-        # Filter
         filter_col1, filter_col2 = st.columns([2, 1])
-        with filter_col1:
-            search = st.text_input("🔍 Cari berdasarkan Nama atau ID Nasabah", placeholder="Ketik untuk mencari...")
-        with filter_col2:
-            status_filter = st.selectbox("Saring berdasarkan Status", ["Semua", "APPROVED", "REJECTED", "UNDER REVIEW"])
+        with filter_col1: search = st.text_input("🔍 Cari berdasarkan Nama/ID", placeholder="Ketik untuk mencari...")
+        with filter_col2: status_filter = st.selectbox("Saring Status", ["Semua", "APPROVED", "REJECTED", "UNDER REVIEW"])
 
         filtered_df = df.copy()
+        if search: filtered_df = filtered_df[filtered_df["Name"].str.contains(search, case=False) | filtered_df["ID"].str.contains(search, case=False)]
+        if status_filter != "Semua": filtered_df = filtered_df[filtered_df["Status"] == status_filter]
 
-        if search:
-            filtered_df = filtered_df[
-                filtered_df["Name"].str.contains(search, case=False) |
-                filtered_df["ID"].str.contains(search, case=False)
-            ]
+        def style_status(val):
+            if val == "APPROVED": return "color: #059669; font-weight: 700;"
+            elif val == "REJECTED": return "color: #DC2626; font-weight: 700;"
+            else: return "color: #D97706; font-weight: 700;"
 
-        if status_filter != "Semua":
-            filtered_df = filtered_df[filtered_df["Status"] == status_filter]
-
-        # Format data
         display_df = filtered_df.copy()
         display_df["Income"] = display_df["Income"].apply(format_currency)
         display_df["Debt Ratio"] = display_df["Debt Ratio"].apply(format_pct)
+        display_df["Status"] = display_df["Status"].replace({"APPROVED": " APPROVED", "REJECTED": " REJECTED", "UNDER REVIEW": " UNDER REVIEW"})
 
-        # Tambahin visual biar menarik
-        display_df["Status"] = display_df["Status"].replace({
-            "APPROVED": " APPROVED",
-            "REJECTED": " REJECTED",
-            "UNDER REVIEW": " UNDER REVIEW"
-        })
-
-        # Tampilkan tabel
-        st.dataframe(display_df, use_container_width=True, height=380)
-
-        st.caption(f"Menampilkan {len(filtered_df)} dari {total} nasabah yang dievaluasi pada sesi saat ini.")
+        styled = display_df.style.applymap(style_status, subset=["Status"])
+        st.dataframe(styled, use_container_width=True, height=380)
+        st.caption(f"Menampilkan {len(filtered_df)} dari {total} nasabah yang dievaluasi.")
